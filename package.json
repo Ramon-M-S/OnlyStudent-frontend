@@ -8,13 +8,16 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:unit": "vitest run",
-    "test": "vitest run"
+    "test": "vitest run",
+    "qa": "bash scripts/qa.sh",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "vue": "^3.4.21",
     "vue-router": "^4.3.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "@vitejs/plugin-vue": "^5.0.4",
     "@vue/test-utils": "^2.4.5",
     "jsdom": "^24.0.0",
