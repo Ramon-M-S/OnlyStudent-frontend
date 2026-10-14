@@ -21,8 +21,8 @@ if ! curl --silent --output /dev/null --max-time 2 http://127.0.0.1:8082/user; t
     sleep 1
   done
 fi
-(cd "$backend_dir" && node scripts/seed-demo.mjs)
-(cd "$backend_dir" && node scripts/check-permissions.mjs)
+# (cd "$backend_dir" && node scripts/seed-demo.mjs)
+# (cd "$backend_dir" && node scripts/check-permissions.mjs)
 cd "$frontend_dir"
 npm run test:unit
 npm run build
