@@ -10,7 +10,7 @@ function logout() { menuOpen.value = false; emit('logout') }
 <template>
   <header class="topbar">
     <div class="container topbar-inner">
-      <button class="brand" @click="go(session ? 'dashboard' : 'home')" aria-label="OnlyStudent, início"><span class="brand-mark">O.</span><span>OnlyStudent</span></button>
+      <button class="brand" @click="go(session ? 'dashboard' : 'home')" aria-label="Study Hub, início"><span class="brand-mark">S.</span><span>Study Hub</span></button>
       <nav :class="{ open: menuOpen }" aria-label="Navegação principal">
         <template v-if="session">
           <button :class="{ active: view === 'dashboard' }" @click="go('dashboard')">Minhas turmas</button>

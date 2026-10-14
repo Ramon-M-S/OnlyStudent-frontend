@@ -1,4 +1,4 @@
-# OnlyStudent frontend
+# Study Hub
 
 Interface Vue 3 para alunos e professores. Alunos podem procurar turmas, entrar nelas e abrir materiais. Professores podem criar turmas e acompanhar as que criaram. O frontend usa a API Spring do repositório `OnlyStudent-backend`.
 

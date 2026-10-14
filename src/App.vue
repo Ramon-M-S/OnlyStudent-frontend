@@ -177,6 +177,6 @@ onUnmounted(() => window.removeEventListener('popstate', onHistoryChange))
       <ClassFormView v-else-if="view === 'create'" :loading="loading" :error="error" @navigate="navigate" @submit="createClass" />
       <ClassDetailView v-else-if="view === 'class' && selected" :classroom="selected" :error="error" @navigate="backToClasses" />
     </main>
-    <footer class="container footer"><span>OnlyStudent</span><span>Turmas, pessoas e materiais.</span></footer>
+    <footer class="container footer"><span>Study Hub</span><span>Turmas, pessoas e materiais.</span></footer>
   </div>
 </template>

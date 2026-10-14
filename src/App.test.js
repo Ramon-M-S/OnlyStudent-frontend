@@ -8,10 +8,11 @@ beforeEach(() => {
   vi.unstubAllGlobals()
 })
 
-describe('OnlyStudent', () => {
+describe('Study Hub', () => {
   it('abre a página com ações de acesso e sem indicadores fictícios', () => {
     const app = mount(App)
     expect(app.find('h1').text()).toContain('acompanhar suas aulas')
+    expect(app.find('.brand').text()).toContain('Study Hub')
     expect(app.text()).toContain('Criar conta')
     expect(app.text()).not.toContain('Turmas ativas')
   })

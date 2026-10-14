@@ -8,7 +8,7 @@ function submit() { emit('submit', { ...form, role: role.value.toUpperCase() }) 
 </script>
 <template>
   <section class="auth-wrap container">
-    <div class="auth-intro"><span class="eyebrow">OnlyStudent</span><h1>{{ mode === 'login' ? 'Bom ter você de volta.' : 'Vamos criar sua conta.' }}</h1><p>{{ mode === 'login' ? 'Entre para ver suas turmas.' : 'Escolha como você vai usar a plataforma.' }}</p></div>
+    <div class="auth-intro"><span class="eyebrow">Study Hub</span><h1>{{ mode === 'login' ? 'Bom ter você de volta.' : 'Vamos criar sua conta.' }}</h1><p>{{ mode === 'login' ? 'Entre para ver suas turmas.' : 'Escolha como você vai usar a plataforma.' }}</p></div>
     <form class="form-card" @submit.prevent="submit">
       <div v-if="mode === 'register'" class="role-switch" aria-label="Tipo de conta"><button type="button" :class="{ selected: role === 'student' }" @click="role = 'student'">Sou aluno</button><button type="button" :class="{ selected: role === 'educator' }" @click="role = 'educator'">Sou professor</button></div>
       <label v-if="mode === 'register'">Nome completo<input v-model.trim="form.name" autocomplete="name" required placeholder="Seu nome"></label>

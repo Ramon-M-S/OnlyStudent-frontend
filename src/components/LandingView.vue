@@ -10,7 +10,7 @@ const emit = defineEmits(['navigate'])
       <div class="actions"><button class="button dark" @click="emit('navigate', 'register')">Criar conta <span>↗</span></button><button class="button outline" @click="emit('navigate', 'login')">Já tenho conta</button></div>
     </div>
     <div class="home-example" aria-label="Exemplo de organização das turmas">
-      <div class="example-head"><span>OnlyStudent</span><span>Exemplo de turma</span></div>
+      <div class="example-head"><span>Study Hub</span><span>Exemplo de turma</span></div>
       <div class="example-body"><small>TURMA</small><h2>Introdução à Programação</h2><p>Materiais, professor e colegas em um só lugar.</p><div class="example-row"><span>01</span><div><strong>Primeiros passos</strong><small>Material da turma</small></div><span>↗</span></div><div class="example-row"><span>02</span><div><strong>Lógica e algoritmos</strong><small>Material da turma</small></div><span>↗</span></div></div>
     </div>
   </section>
