@@ -19,7 +19,7 @@ export function applyPreferences(preferences, darkSystem = false, root = documen
   root.style.fontSize = `${preferences.fontSize}%`
   root.style.setProperty('--font-adjust', `${(preferences.fontSize - 100) * 0.4}px`)
   document.querySelectorAll('meta[name="theme-color"]').forEach(meta => {
-    if (!meta.media) meta.content = theme === 'dark' ? '#141815' : '#fafaf7'
+    if (!meta.media) meta.content = theme === 'dark' ? '#051f20' : '#fafaf7'
   })
 }
 

@@ -38,20 +38,20 @@
   text-rendering: optimizeLegibility;
 }
 :root[data-theme='dark'] {
-    --color-page: #141815;
-    --color-surface: #1e241f;
-    --color-text: #edf2eb;
-    --color-ink: #dce8d5;
-    --color-ink-hover: #c6d8bc;
-    --color-on-ink: #192119;
-    --color-muted: #aab5a7;
-    --color-accent: #374c34;
-    --color-accent-text: #c6e5b4;
-    --color-border: #344037;
-    --color-border-strong: #566556;
-    --color-hover: #2b342c;
-    --color-focus: #a7c991;
-    --color-focus-ring: #354d31;
+    --color-page: #051f20;
+    --color-surface: #0b2b26;
+    --color-text: #daf1de;
+    --color-ink: #daf1de;
+    --color-ink-hover: #8eb69b;
+    --color-on-ink: #051f20;
+    --color-muted: #8eb69b;
+    --color-accent: #163b32;
+    --color-accent-text: #8eb69b;
+    --color-border: #235347;
+    --color-border-strong: #235347;
+    --color-hover: #163b32;
+    --color-focus: #8eb69b;
+    --color-focus-ring: #235347;
     --color-error: #ffb7a9;
     --color-error-bg: #422b27;
     --color-success: #b9dfbd;
@@ -120,6 +120,6 @@
 .contrast-switch[aria-checked='true']{background:var(--color-accent);border-color:var(--color-accent-text)}
 .contrast-switch[aria-checked='true'] span{transform:translateX(17px);background:var(--color-accent-text)}
 .accessibility-reset{padding:0;border:0;background:none;color:var(--color-accent-text);font-size:.75rem;font-weight:700}
-@media(max-width:600px){.topbar nav{margin-left:0}.accessibility-trigger-label{display:none}.accessibility-trigger{width:38px;justify-content:center;padding:8px}.header-controls{margin-left:auto}.menu-button{min-height:38px;border:1px solid var(--color-border-strong);border-radius:var(--radius-sm);color:var(--color-text)}}
+@media(max-width:600px){.topbar nav{margin-left:0}.accessibility-trigger-label{display:none}.accessibility-trigger{width:38px;justify-content:center;padding:8px}.accessibility-panel{position:fixed;top:72px;left:16px;right:16px;width:auto}.header-controls{margin-left:auto}.menu-button{min-height:38px;border:1px solid var(--color-border-strong);border-radius:var(--radius-sm);color:var(--color-text)}}
 .topbar{position:relative;z-index:40}
 @media(prefers-reduced-motion:reduce){.contrast-switch span{transition:none}}

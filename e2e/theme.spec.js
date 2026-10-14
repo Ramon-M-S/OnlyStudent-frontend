@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 for (const [scheme, background, surface] of [
   ['light', 'rgb(250, 250, 247)', 'rgb(255, 255, 255)'],
-  ['dark', 'rgb(20, 24, 21)', 'rgb(30, 36, 31)']
+  ['dark', 'rgb(5, 31, 32)', 'rgb(11, 43, 38)']
 ]) {
   test(`segue o tema ${scheme} do sistema`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme })
@@ -15,11 +15,37 @@ for (const [scheme, background, surface] of [
   })
 }
 
+test('paleta escura aparece nos elementos da página', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await page.goto('/')
+  const colors = await page.evaluate(() => {
+    const color = selector => getComputedStyle(document.querySelector(selector))
+    return {
+      heading: color('.home h1').color,
+      muted: color('.home-copy > p').color,
+      accent: color('.brand-mark').backgroundColor,
+      border: color('.home-example').borderTopColor,
+      themeColor: document.querySelector('meta[name="theme-color"]').content
+    }
+  })
+  expect(colors).toEqual({
+    heading: 'rgb(218, 241, 222)',
+    muted: 'rgb(142, 182, 155)',
+    accent: 'rgb(22, 59, 50)',
+    border: 'rgb(35, 83, 71)',
+    themeColor: '#051f20'
+  })
+})
+
 test('controle de aparência salva tema, tamanho da fonte e alto contraste', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' })
   await page.goto('/')
   await page.getByRole('button', { name: 'Aparência e acessibilidade' }).click()
   await expect(page.getByRole('button', { name: 'Sistema' })).toHaveAttribute('aria-pressed', 'true')
+  const panel = await page.locator('.accessibility-panel').boundingBox()
+  const viewport = page.viewportSize()
+  expect(panel.x).toBeGreaterThanOrEqual(0)
+  expect(panel.x + panel.width).toBeLessThanOrEqual(viewport.width)
 
   await page.getByRole('button', { name: 'Claro', exact: true }).click()
   await page.emulateMedia({ colorScheme: 'light' })
