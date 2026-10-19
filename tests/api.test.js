@@ -17,6 +17,16 @@ describe('cliente HTTP do backend', () => {
     }))
   })
 
+  it('aceita cadastro com 201 e corpo vazio', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 201, text: async () => '' }))
+    await expect(request('/auth/register', { method: 'POST', body: { role: 'STUDENT' } })).resolves.toBeNull()
+  })
+
+  it('preserva erro 403 quando a turma não está acessível', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 403, text: async () => 'Acesso negado.' }))
+    await expect(request('/turma/123')).rejects.toMatchObject({ status: 403, message: 'Acesso negado.' })
+  })
+
   it('preserva status 401 para encerrar a sessão', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 401, text: async () => '' }))
     await expect(request('/turma/1')).rejects.toMatchObject({ status: 401, message: 'Sua sessão expirou. Entre novamente.' })
