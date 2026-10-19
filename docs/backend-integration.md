@@ -1,22 +1,28 @@
-# Integração com OnlyStudent-backend
+# Integração OnlyStudent
 
-Backend de referência: https://github.com/Ramon-M-S/OnlyStudent-backend
+Backend de referência: https://github.com/Ramon-M-S/OnlyStudent-backend/tree/refactor/backend
 
-## Desenvolvimento local
+## Contratos confirmados na branch refactor/backend
 
-1. Configure e inicie o Spring Boot e o PostgreSQL conforme o backend.
-2. Copie `.env.example` para `.env.local`. Ajuste `BACKEND_URL` para a porta em que o Spring estiver disponível (por exemplo 8080 ou 8082).
-3. Rode `npm ci` e `npm run dev`.
-4. O navegador acessa `/api/*`; o Vite encaminha para o backend removendo o prefixo `/api`.
+- `POST /auth/register`: recebe `email`, `telephone`, `name`, `password`, `role` e `especialidade` quando professor. Retorna HTTP 201 sem conteúdo.
+- `POST /auth/login`: recebe `email` e `password`. Retorna `name`, `email`, `role`, `telephone`, `especialidade`, `token` e `id`.
+- `GET /turma/educatorTurmas` e `GET /turma/studentTurmas`: recebem paginação e retornam `Page<ClassroomsDTO>` (`content`).
+- `GET /turma/allClassroom`: busca paginada para usuário autenticado.
+- `POST /turma/register`: recebe `name`, `description`, `idEducator`, `price`. O backend usa a identidade autenticada para definir o professor.
+- `POST /turma/{codigo}/entrar`: recebe `{ "idAluno": 123 }` (número inteiro); o backend identifica o aluno autenticado.
+- `GET /turma/{id}`: detalhe acessível apenas ao professor dono ou aluno matriculado; caso contrário HTTP 403.
+- `GET /turma/{codigo}/materials`: retorna materiais para usuários autorizados.
+
+As mensagens de erro do backend podem vir como texto simples, não apenas JSON.
+
+## Executar localmente
+
+Inicie a API Spring Boot com PostgreSQL seguindo o repositório do backend. Copie `.env.example` para `.env.local` e configure `BACKEND_URL` para a origem da API. Execute `npm ci` e `npm run dev`. O proxy de desenvolvimento encaminha `/api/*` ao Spring removendo `/api`.
 
 ## Produção
 
-O proxy do Vite funciona somente no servidor de desenvolvimento. Em produção, configure `VITE_API_URL` com a URL pública HTTPS da API ou configure um proxy/rewrite no seu provedor de hospedagem. O backend também deve permitir a origem do frontend no CORS quando usar domínios distintos.
+O proxy Vite não existe no build estático. Configure `VITE_API_URL` para a URL HTTPS pública da API ou use rewrite/proxy no provedor. Configure `app.cors.allowed-origins` no backend conforme a origem real do frontend e mantenha segredos no ambiente do servidor, nunca em variáveis `VITE_*`.
 
-## Contratos que precisam ser validados com o backend
+## Validação pendente
 
-O frontend atualmente usa `POST /auth/register`, `POST /auth/login`, `GET /turma/educatorTurmas`, `GET /turma/studentTurmas`, `GET /turma/allClassroom`, `GET /turma/{id}`, `POST /turma/register` e `POST /turma/{id}/entrar`.
-
-Essas rotas refletem o contrato já presente no frontend, **não constituem uma confirmação** dos endpoints disponíveis no repositório Ramon-M-S/OnlyStudent-backend. Antes de considerar a integração funcional, confirme os controllers, DTOs, autenticação JWT e teste com o Spring e o banco ativos.
-
-Não inclua tokens JWT nem senhas em variáveis `VITE_*` ou no repositório.
+Ainda falta realizar um teste de ponta a ponta com frontend, Spring e PostgreSQL ativos. Os contratos acima foram examinados no código da branch `refactor/backend`, mas não demonstram disponibilidade operacional ou deploy.
