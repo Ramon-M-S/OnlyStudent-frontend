@@ -143,7 +143,7 @@ async function joinClass(item) {
   loading.value = true
   error.value = ''
   try {
-    await call(`/turma/${item.codigo}/entrar`, { method: 'POST', body: { idAluno: String(session.value.id) } })
+    await call(`/turma/${item.codigo}/entrar`, { method: 'POST', body: { idAluno: Number(session.value.id) } })
     window.history.replaceState({}, '', routeFor('dashboard'))
     view.value = 'dashboard'
     notice.value = `Você entrou em ${item.name}.`
