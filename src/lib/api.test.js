@@ -10,8 +10,9 @@ describe('request', () => {
     await expect(request('/turma/register', { method: 'POST', token: 'abc', body: { name: 'Turma' } })).resolves.toEqual({ codigo: 5 })
     expect(fetchMock).toHaveBeenCalledWith('/api/turma/register', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer abc' },
-      body: '{"name":"Turma"}'
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', Authorization: 'Bearer abc' },
+      body: '{"name":"Turma"}',
+      signal: undefined
     })
   })
 
