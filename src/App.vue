@@ -21,6 +21,7 @@ const view = ref(session.value ? (initialRoute.view === 'home' ? 'dashboard' : i
 const classes = ref([])
 const catalog = ref([])
 const selected = ref(null)
+const canViewStudents = ref(false)
 const loading = ref(false)
 const error = ref('')
 const notice = ref('')
@@ -30,6 +31,7 @@ function logout() {
   session.value = null
   classes.value = []
   selected.value = null
+  canViewStudents.value = false
   view.value = 'home'
   window.history.replaceState({}, '', routeFor('home'))
 }
@@ -52,11 +54,15 @@ async function loadClasses() {
   loading.value = true
   error.value = ''
   try {
-    const endpoint = session.value.role === 'educator' ? 'educatorTurmas' : 'studentTurmas'
-    const result = await call(`/turma/${endpoint}?codigo=${session.value.id}&page=0&size=50`)
-    classes.value = result.content || []
+    classes.value = await fetchClassesFor(session.value.role)
   } catch (cause) { handleError(cause) }
   finally { loading.value = false }
+}
+
+async function fetchClassesFor(role) {
+  const endpoint = role === 'educator' ? 'educatorTurmas' : 'studentTurmas'
+  const result = await call(`/turma/${endpoint}?codigo=${session.value.id}&page=0&size=50`)
+  return result.content || []
 }
 
 async function loadCatalog() {
@@ -71,6 +77,7 @@ function navigate(next, { replace = false } = {}) {
   error.value = ''
   notice.value = ''
   selected.value = null
+  canViewStudents.value = false
   window.history[replace ? 'replaceState' : 'pushState']({}, '', routeFor(next))
   view.value = next
   if (next === 'dashboard') loadClasses()
@@ -94,8 +101,20 @@ async function authenticate(form) {
 async function showClass(classroomId, recordHistory = true) {
   loading.value = true
   error.value = ''
+  canViewStudents.value = false
   try {
     selected.value = await call(`/turma/${classroomId}`)
+    if (session.value?.role === 'educator') {
+      try {
+        const ownedClasses = classes.value.length ? classes.value : await fetchClassesFor('educator')
+        if (!classes.value.length) classes.value = ownedClasses
+        canViewStudents.value = ownedClasses.some(item => String(item.codigo) === String(classroomId))
+      } catch (cause) {
+        handleError(cause)
+        if (!session.value) return
+      }
+    }
+
     if (recordHistory) window.history.pushState({ from: view.value }, '', routeFor('class', classroomId))
     view.value = 'class'
   }
@@ -175,7 +194,17 @@ onUnmounted(() => window.removeEventListener('popstate', onHistoryChange))
       <DashboardView v-else-if="view === 'dashboard'" :session="session" :classes="classes" :loading="loading" :error="error" :notice="notice" @navigate="navigate" @open-class="openClass" />
       <CatalogView v-else-if="view === 'catalog'" :classes="classes" :catalog="catalog" :loading="loading" :error="error" @navigate="navigate" @join="joinClass" />
       <ClassFormView v-else-if="view === 'create'" :loading="loading" :error="error" @navigate="navigate" @submit="createClass" />
-      <ClassDetailView v-else-if="view === 'class' && selected" :classroom="selected" :error="error" @navigate="backToClasses" />
+      
+      <!-- CORREÇÃO AQUI: Adicionado o :session="session" -->
+      <ClassDetailView 
+        v-else-if="view === 'class' && selected" 
+        :classroom="selected" 
+        :session="session"
+        :error="error" 
+        :can-view-students="canViewStudents" 
+        @navigate="backToClasses" 
+      />
+      
     </main>
     <footer class="container footer"><span>Study Hub</span><span>Turmas, pessoas e materiais.</span></footer>
   </div>
