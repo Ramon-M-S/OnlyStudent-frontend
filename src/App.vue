@@ -150,9 +150,14 @@ async function createClass({ materiais = [], ...form }) {
   error.value = ''
   try {
     const createdClass = await call('/turma/register', { method: 'POST', body: { ...form, idEducator: session.value.id, price: 0 } })
-    const turmaCodigo = createdClass?.codigo
+    let turmaCodigo = createdClass?.codigo ?? createdClass?.id
     if (turmaCodigo === undefined || turmaCodigo === null) {
-      throw new Error('A turma foi criada, mas o código não foi retornado pelo servidor.')
+      const educatorClasses = await fetchClassesFor('educator')
+      const createdClassFromList = educatorClasses.find(item => item.name === form.name)
+      turmaCodigo = createdClassFromList?.codigo ?? createdClassFromList?.id
+    }
+    if (turmaCodigo === undefined || turmaCodigo === null) {
+      throw new Error('A turma foi criada, mas não foi possível localizar seu código.')
     }
 
     const materialResults = await Promise.allSettled(
