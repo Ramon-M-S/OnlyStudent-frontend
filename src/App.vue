@@ -145,14 +145,29 @@ function onHistoryChange() {
   }
 }
 
-async function createClass(form) {
+async function createClass({ materiais = [], ...form }) {
   loading.value = true
   error.value = ''
   try {
-    await call('/turma/register', { method: 'POST', body: { ...form, idEducator: session.value.id, price: 0 } })
+    const createdClass = await call('/turma/register', { method: 'POST', body: { ...form, idEducator: session.value.id, price: 0 } })
+    const turmaCodigo = createdClass?.codigo
+    if (turmaCodigo === undefined || turmaCodigo === null) {
+      throw new Error('A turma foi criada, mas o código não foi retornado pelo servidor.')
+    }
+
+    const materialResults = await Promise.allSettled(
+      materiais.map(material => call('/material/register', {
+        method: 'POST',
+        body: { ...material, turmaCodigo }
+      }))
+    )
+    const failedMaterials = materialResults.filter(result => result.status === 'rejected')
+
     window.history.replaceState({}, '', routeFor('dashboard'))
     view.value = 'dashboard'
-    notice.value = 'Turma criada.'
+    notice.value = failedMaterials.length
+      ? `Turma criada, mas ${failedMaterials.length} material(is) não puderam ser salvo(s).`
+      : 'Turma criada.'
     await loadClasses()
   } catch (cause) { handleError(cause) }
   finally { loading.value = false }
