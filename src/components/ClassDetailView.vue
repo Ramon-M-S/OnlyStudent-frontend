@@ -1,9 +1,10 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { request } from '../lib/api.js'
 import ClassStudentsView from './ClassStudentsView.vue'
 import ClassAnnouncementsView from './ClassAnnouncementsView.vue'
 
-defineProps({ 
+const props = defineProps({
   classroom: { type: Object, required: true }, 
   error: { type: String, default: '' }, 
   canViewStudents: Boolean,
@@ -11,8 +12,95 @@ defineProps({
 })
 
 const emit = defineEmits(['navigate'])
-// Muda para 'announcements' para abrir os avisos primeiro
-const activeTab = ref('announcements') 
+const activeTab = ref('materials')
+const materials = ref([])
+const materialsLoading = ref(false)
+const materialsError = ref('')
+const showMaterialForm = ref(false)
+const materialForm = reactive({ name: '', tipo: 'PDF', url: '', descricao: '' })
+const materialSubmitting = ref(false)
+
+const educatorId = computed(() => {
+  const classroom = props.classroom
+  return classroom.idEducator ?? classroom.idEducador ?? classroom.educatorId
+    ?? classroom.educator?.id ?? classroom.educador?.id
+})
+
+const canManageMaterials = computed(() => {
+  if (props.session.role !== 'educator') return false
+  if (educatorId.value !== undefined && educatorId.value !== null) {
+    return String(educatorId.value) === String(props.session.id)
+  }
+  return props.canViewStudents
+})
+
+function resetMaterialForm() {
+  materialForm.name = ''
+  materialForm.tipo = 'PDF'
+  materialForm.url = ''
+  materialForm.descricao = ''
+}
+
+async function loadMaterials() {
+  materialsLoading.value = true
+  materialsError.value = ''
+  try {
+    const result = await request(`/turma/${props.classroom.codigo}/materials`, { token: props.session.token })
+    materials.value = Array.isArray(result) ? result : (result?.content || result?.materials || [])
+  } catch (cause) {
+    materialsError.value = cause.message
+    materials.value = props.classroom.materiais || []
+  } finally {
+    materialsLoading.value = false
+  }
+}
+
+async function addMaterial() {
+  const name = materialForm.name.trim()
+  const url = materialForm.url.trim()
+  const descricao = materialForm.descricao.trim()
+  if (!name || !materialForm.tipo || !/^https?:\/\//i.test(url)) {
+    materialsError.value = 'Preencha nome e tipo e use uma URL iniciada por http:// ou https://.'
+    return
+  }
+
+  materialSubmitting.value = true
+  materialsError.value = ''
+  try {
+    const result = await request('/material/register', {
+      method: 'POST',
+      token: props.session.token,
+      body: { name, tipo: materialForm.tipo, url, descricao, turmaCodigo: props.classroom.codigo }
+    })
+    materials.value.push(result && typeof result === 'object'
+      ? result
+      : { name, tipo: materialForm.tipo, url, descricao })
+    resetMaterialForm()
+    showMaterialForm.value = false
+  } catch (cause) {
+    materialsError.value = cause.message
+  } finally {
+    materialSubmitting.value = false
+  }
+}
+
+async function removeMaterial(material) {
+  if (!window.confirm(`Remover o material "${material.name}"?`)) return
+
+  materialsError.value = ''
+  try {
+    await request(`/material/delete/${material.id}`, {
+      method: 'DELETE',
+      token: props.session.token
+    })
+    materials.value = materials.value.filter(item => item.id !== material.id)
+  } catch (cause) {
+    materialsError.value = cause.message
+  }
+}
+
+watch(() => props.classroom.codigo, loadMaterials)
+onMounted(loadMaterials)
 </script>
 
 <template>
@@ -79,10 +167,35 @@ const activeTab = ref('announcements')
 
         <!-- Painel de Materiais -->
         <div v-else-if="activeTab === 'materials'" id="materials-panel" key="materials" class="tab-panel" role="tabpanel" aria-labelledby="materials-tab">
-          <div v-if="classroom.materiais?.length" class="material-list">
-            <a v-for="material in classroom.materiais" :key="material.id" :href="material.url" target="_blank" rel="noopener noreferrer">
-              <span>{{ material.tipo }}</span><strong>{{ material.name }}</strong><span>↗</span>
-            </a>
+          <div class="materials-heading">
+            <div>
+              <h2>Materiais da turma</h2>
+              <p>Links e conteúdos compartilhados pelo professor.</p>
+            </div>
+            <button v-if="canManageMaterials" type="button" class="button outline" @click="showMaterialForm = !showMaterialForm">
+              {{ showMaterialForm ? 'Cancelar' : '+ Adicionar material' }}
+            </button>
+          </div>
+
+          <p v-if="materialsError" class="message error" role="alert">{{ materialsError }}</p>
+          <form v-if="showMaterialForm && canManageMaterials" class="material-entry form-card" @submit.prevent="addMaterial">
+            <div class="material-fields">
+              <label>Nome<input v-model.trim="materialForm.name" required placeholder="Ex.: Lista de exercícios"></label>
+              <label>Tipo<select v-model="materialForm.tipo" required><option value="PDF">PDF</option><option value="IMAGEM">IMAGEM</option><option value="VIDEO">VIDEO</option></select></label>
+              <label>URL<input v-model.trim="materialForm.url" required type="url" inputmode="url" placeholder="https://..."></label>
+              <label class="material-description">Descrição (Opcional)<textarea v-model.trim="materialForm.descricao" maxlength="500" rows="3" placeholder="Descreva brevemente este material"></textarea></label>
+            </div>
+            <button class="button dark" :disabled="materialSubmitting">{{ materialSubmitting ? 'Salvando…' : 'Salvar material' }}</button>
+          </form>
+
+          <p v-if="materialsLoading" class="empty">Carregando materiais…</p>
+          <div v-else-if="materials.length" class="material-list">
+            <div v-for="material in materials" :key="material.id || `${material.tipo}-${material.url}`" class="material-item">
+              <a :href="material.url" target="_blank" rel="noopener noreferrer">
+                <span>{{ material.tipo }}</span><span class="material-content"><strong>{{ material.name }}</strong><small v-if="material.descricao">{{ material.descricao }}</small></span><span>↗</span>
+              </a>
+              <button v-if="canManageMaterials" type="button" class="text-button remove-material" :aria-label="`Remover ${material.name}`" @click="removeMaterial(material)">🗑 Remover</button>
+            </div>
           </div>
           <p v-else class="empty">O professor ainda não adicionou materiais.</p>
         </div>
