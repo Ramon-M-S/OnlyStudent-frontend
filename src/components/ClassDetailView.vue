@@ -19,6 +19,7 @@ const materialsError = ref('')
 const showMaterialForm = ref(false)
 const materialForm = reactive({ name: '', tipo: 'PDF', url: '', descricao: '' })
 const materialEditandoId = ref(null)
+const materialParaRemoverId = ref(null)
 const materialSubmitting = ref(false)
 
 const educatorId = computed(() => {
@@ -128,9 +129,12 @@ function toggleMaterialForm() {
   showMaterialForm.value = true
 }
 
-async function removeMaterial(material) {
-  if (!window.confirm(`Remover o material "${material.name}"?`)) return
+function iniciarRemocaoMaterial(material) {
+  materialParaRemoverId.value = material.id
+  materialsError.value = ''
+}
 
+async function confirmarRemocaoMaterial(material) {
   materialsError.value = ''
   try {
     await request(`/material/delete/${material.id}`, {
@@ -138,9 +142,14 @@ async function removeMaterial(material) {
       token: props.session.token
     })
     materials.value = materials.value.filter(item => item.id !== material.id)
+    materialParaRemoverId.value = null
   } catch (cause) {
     materialsError.value = cause.message
   }
+}
+
+function cancelarRemocaoMaterial() {
+  materialParaRemoverId.value = null
 }
 
 watch(() => props.classroom.codigo, loadMaterials)
@@ -238,8 +247,16 @@ onMounted(loadMaterials)
               <a :href="material.url" target="_blank" rel="noopener noreferrer">
                 <span>{{ material.tipo }}</span><span class="material-content"><strong>{{ material.name }}</strong><small v-if="material.descricao">{{ material.descricao }}</small></span><span>↗</span>
               </a>
-              <button v-if="canManageMaterials" type="button" class="text-button edit-material" :aria-label="`Editar ${material.name}`" @click="editMaterial(material)">✎ Editar</button>
-              <button v-if="canManageMaterials" type="button" class="text-button remove-material" :aria-label="`Remover ${material.name}`" @click="removeMaterial(material)">🗑 Remover</button>
+              <button v-if="canManageMaterials && materialParaRemoverId !== material.id" type="button" class="text-button edit-material" :aria-label="`Editar ${material.name}`" @click="editMaterial(material)">✎ Editar</button>
+              <button v-if="canManageMaterials && materialParaRemoverId !== material.id" type="button" class="text-button remove-material" :aria-label="`Remover ${material.name}`" @click="iniciarRemocaoMaterial(material)">🗑 Remover</button>
+
+              <div v-if="materialParaRemoverId === material.id" class="material-remove-confirm">
+                <span>Remover "{{ material.name }}"?</span>
+                <div class="material-remove-actions">
+                  <button type="button" class="button outline" @click="cancelarRemocaoMaterial">Cancelar</button>
+                  <button type="button" class="button dark" @click="confirmarRemocaoMaterial(material)">Confirmar</button>
+                </div>
+              </div>
             </div>
           </div>
           <p v-else class="empty">O professor ainda não adicionou materiais.</p>
