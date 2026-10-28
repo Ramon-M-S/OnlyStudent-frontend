@@ -8,7 +8,8 @@ const paths = {
 }
 
 export function routeFor(view, classroomId) {
-  return `#${view === 'class' ? `/turma/${classroomId}` : paths[view]}`
+  if (view === 'class') return `#/turma/${classroomId}`
+  return `#${paths[view]}`
 }
 
 export function routeFromHash(hash) {
