@@ -13,6 +13,9 @@ const props = defineProps({
 
 const emit = defineEmits(['navigate'])
 const activeTab = ref('materials')
+const classroomData = reactive({ ...props.classroom })
+const isEditingClass = ref(false)
+const classForm = reactive({ name: '', description: '' })
 const materials = ref([])
 const materialsLoading = ref(false)
 const materialsError = ref('')
@@ -28,6 +31,20 @@ const educatorId = computed(() => {
     ?? classroom.educator?.id ?? classroom.educador?.id
 })
 
+const isOwner = computed(() => {
+  if (props.session?.role !== 'educator') return false
+
+  const educatorIdMatches = props.classroom?.idEducator !== undefined &&
+    props.classroom?.idEducator !== null &&
+    String(props.classroom.idEducator) === String(props.session?.id)
+  const educatorName = String(props.classroom?.educator ?? '').trim()
+  const userNames = [props.session?.name, props.session?.email]
+    .filter(Boolean)
+    .map(value => String(value).trim())
+
+  return educatorIdMatches || (educatorName !== '' && userNames.includes(educatorName))
+})
+
 const canManageMaterials = computed(() => {
   if (props.session.role !== 'educator') return false
   if (educatorId.value !== undefined && educatorId.value !== null) {
@@ -35,6 +52,49 @@ const canManageMaterials = computed(() => {
   }
   return props.canViewStudents
 })
+
+function syncClassroomForm() {
+  classForm.name = classroomData.name || ''
+  classForm.description = classroomData.description || ''
+}
+
+function beginClassEdit() {
+  syncClassroomForm()
+  isEditingClass.value = true
+}
+
+function cancelClassEdit() {
+  isEditingClass.value = false
+  syncClassroomForm()
+}
+
+async function saveClassEdit() {
+  const name = classForm.name.trim()
+  const description = classForm.description.trim()
+
+  if (!name) {
+    materialsError.value = 'Informe o nome da turma.'
+    return
+  }
+
+  try {
+    await request(`/turma/${props.classroom.codigo}`, {
+      method: 'PUT',
+      token: props.session.token,
+      body: {
+        name,
+        description,
+        idEducator: props.classroom.idEducator,
+        price: props.classroom.price || 0
+      }
+    })
+
+    Object.assign(classroomData, { ...props.classroom, name, description })
+    isEditingClass.value = false
+  } catch (cause) {
+    materialsError.value = cause.message
+  }
+}
 
 function resetMaterialForm() {
   materialForm.name = ''
@@ -152,6 +212,10 @@ function cancelarRemocaoMaterial() {
   materialParaRemoverId.value = null
 }
 
+watch(() => props.classroom, (value) => {
+  Object.assign(classroomData, value)
+  syncClassroomForm()
+}, { immediate: true, deep: true })
 watch(() => props.classroom.codigo, loadMaterials)
 onMounted(loadMaterials)
 </script>
@@ -161,7 +225,43 @@ onMounted(loadMaterials)
     <div class="workspace-heading">
       <div>
         <span class="eyebrow">TURMA</span>
-        <h1>{{ classroom.name }}</h1>
+        <div class="class-heading-row">
+          <button
+            v-if="isOwner && !isEditingClass"
+            type="button"
+            class="text-button edit-class-button"
+            aria-label="Editar turma"
+            @click="beginClassEdit"
+          >✎</button>
+          <h1 v-if="!isEditingClass">{{ classroomData.name }}</h1>
+        </div>
+        <div v-if="isEditingClass" class="form-card edit-classroom-form">
+          <div class="form-field">
+            <label>Nome da turma</label>
+            <input
+              type="text"
+              v-model.trim="classForm.name"
+              class="form-input"
+              maxlength="100"
+              required
+              placeholder="Ex.: Matemática I"
+            />
+          </div>
+
+          <div class="form-field">
+            <label>Descrição</label>
+            <textarea
+              v-model.trim="classForm.description"
+              class="form-input"
+              placeholder="O que os alunos vão estudar?"
+            ></textarea>
+          </div>
+
+          <div class="edit-class-actions">
+            <button type="button" class="button edit-class-save" @click="saveClassEdit">Salvar</button>
+            <button type="button" class="button outline" @click="cancelClassEdit">Cancelar</button>
+          </div>
+        </div>
       </div>
       <button class="text-button" @click="emit('navigate', 'dashboard')">← Minhas turmas</button>
     </div>
@@ -169,7 +269,7 @@ onMounted(loadMaterials)
     <p v-if="error" class="message error" role="alert">{{ error }}</p>
 
     <div class="class-detail">
-      <p>{{ classroom.description }}</p>
+      <p v-if="!isEditingClass">{{ classroomData.description }}</p>
       
       <!-- Barra de Abas: Nova Ordem e Fontes -->
       <div class="class-tabs" role="tablist" aria-label="Conteúdo da turma" style="font-size: 1.1rem;">

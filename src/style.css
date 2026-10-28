@@ -254,7 +254,65 @@
 .material-item{display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--color-border)}.material-item a{flex:1}.material-content{display:flex;flex-direction:column;gap:4px}
 .material-content small{color:var(--color-muted);font-size:.75rem;line-height:1.4}
 .material-item .edit-material,.material-item .remove-material{flex-shrink:0}.material-item .edit-material{color:var(--color-accent-text)}.material-remove-confirm{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-surface);color:var(--color-text);font-size:.75rem}.material-remove-actions{display:flex;align-items:center;gap:8px}.material-remove-actions .button{padding:8px 12px;font-size:.75rem}.material-entry input{display:block;width:100%;border:1px solid var(--color-border);border-radius:6px;background:var(--color-surface);padding:12px 13px;margin-top:7px;color:var(--color-text);outline:none}.material-entry input:focus{border-color:var(--color-focus);box-shadow:0 0 0 3px var(--color-focus-ring)}
+.class-heading-row{display:flex;align-items:center;gap:12px}.class-edit-form{width:100%;max-width:800px;margin-top:24px}.class-edit-form textarea{width:100%;resize:vertical}.form-actions{display:flex;align-items:center;gap:10px;margin-top:4px}
 
 @media(max-width:600px){.student-list{grid-template-columns:1fr}.class-tab{flex:1;min-width:0}}
 @media(max-width:600px){.materials-heading{flex-direction:column}.material-fields{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.tab-panel-enter-active,.tab-panel-leave-active{transition:none}}
+
+.workspace-heading > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.edit-classroom-form {
+  width: 100% !important;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 24px;
+}
+
+.edit-classroom-form .form-field {
+  width: 100%;
+}
+
+.edit-classroom-form .form-field label {
+  margin-bottom: 0;
+}
+
+.edit-classroom-form input,
+.edit-classroom-form textarea {
+  width: 100% !important;
+  box-sizing: border-box;
+}
+
+.edit-classroom-form textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.edit-class-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.edit-class-actions .button {
+  flex: 1 1 0;
+  width: 100%;
+}
+
+.edit-class-save {
+  background: var(--color-success-bg);
+  border: 1px solid var(--color-success);
+  color: var(--color-success);
+}
+
+.edit-class-save:hover {
+  background: var(--color-accent);
+}
