@@ -24,6 +24,9 @@ const materialForm = reactive({ name: '', tipo: 'PDF', url: '', descricao: '' })
 const materialEditandoId = ref(null)
 const materialParaRemoverId = ref(null)
 const materialSubmitting = ref(false)
+const showDeleteClassModal = ref(false)
+const classActionSubmitting = ref(false)
+const classActionError = ref('')
 
 const educatorId = computed(() => {
   const classroom = props.classroom
@@ -45,13 +48,65 @@ const isOwner = computed(() => {
   return educatorIdMatches || (educatorName !== '' && userNames.includes(educatorName))
 })
 
+const deletionScheduled = computed(() => classroomData.dataExclusaoAgendada != null)
+
 const canManageMaterials = computed(() => {
   if (props.session.role !== 'educator') return false
+  if (deletionScheduled.value) return false
   if (educatorId.value !== undefined && educatorId.value !== null) {
     return String(educatorId.value) === String(props.session.id)
   }
   return props.canViewStudents
 })
+
+async function reloadClassroom() {
+  const updatedClassroom = await request(`/turma/${props.classroom.codigo}`, {
+    token: props.session.token
+  })
+  Object.assign(classroomData, updatedClassroom)
+}
+
+function openDeleteClassModal() {
+  classActionError.value = ''
+  showDeleteClassModal.value = true
+}
+
+function closeDeleteClassModal() {
+  if (!classActionSubmitting.value) showDeleteClassModal.value = false
+}
+
+async function confirmDeleteClass() {
+  classActionSubmitting.value = true
+  classActionError.value = ''
+  try {
+    await request(`/turma/${props.classroom.codigo}`, {
+      method: 'DELETE',
+      token: props.session.token
+    })
+    await reloadClassroom()
+    showDeleteClassModal.value = false
+  } catch (cause) {
+    classActionError.value = cause.message
+  } finally {
+    classActionSubmitting.value = false
+  }
+}
+
+async function cancelScheduledDeletion() {
+  classActionSubmitting.value = true
+  classActionError.value = ''
+  try {
+    await request(`/turma/${props.classroom.codigo}`, {
+      method: 'PATCH',
+      token: props.session.token
+    })
+    await reloadClassroom()
+  } catch (cause) {
+    classActionError.value = cause.message
+  } finally {
+    classActionSubmitting.value = false
+  }
+}
 
 function syncClassroomForm() {
   classForm.name = classroomData.name || ''
@@ -226,13 +281,15 @@ onMounted(loadMaterials)
       <div>
         <span class="eyebrow">TURMA</span>
         <div class="class-heading-row">
-          <button
-            v-if="isOwner && !isEditingClass"
-            type="button"
-            class="text-button edit-class-button"
-            aria-label="Editar turma"
-            @click="beginClassEdit"
-          >✎</button>
+          <div v-if="isOwner && !deletionScheduled && !isEditingClass" class="class-actions">
+            <button
+              type="button"
+              class="text-button edit-class-button"
+              aria-label="Editar turma"
+              @click="beginClassEdit"
+            >✎</button>
+            <button type="button" class="button danger-button" @click="openDeleteClassModal">Excluir turma</button>
+          </div>
           <h1 v-if="!isEditingClass">{{ classroomData.name }}</h1>
         </div>
         <div v-if="isEditingClass" class="form-card edit-classroom-form">
@@ -267,6 +324,17 @@ onMounted(loadMaterials)
     </div>
     
     <p v-if="error" class="message error" role="alert">{{ error }}</p>
+    <div v-if="deletionScheduled" class="scheduled-deletion" role="alert">
+      <span>Esta turma está agendada para exclusão.</span>
+      <button
+        v-if="isOwner"
+        type="button"
+        class="button outline"
+        :disabled="classActionSubmitting"
+        @click="cancelScheduledDeletion"
+      >{{ classActionSubmitting ? 'Cancelando…' : 'Cancelar Exclusão' }}</button>
+    </div>
+    <p v-if="classActionError" class="message error" role="alert">{{ classActionError }}</p>
 
     <div class="class-detail">
       <p v-if="!isEditingClass">{{ classroomData.description }}</p>
@@ -370,5 +438,79 @@ onMounted(loadMaterials)
         />
       </Transition>
     </div>
+
+    <div v-if="showDeleteClassModal" class="modal-backdrop" role="presentation" @click.self="closeDeleteClassModal">
+      <div class="form-card confirmation-modal" role="dialog" aria-modal="true" aria-labelledby="delete-class-title">
+        <h2 id="delete-class-title">Excluir turma?</h2>
+        <p>A turma será excluída em 3 dias. Os alunos serão notificados. Deseja continuar?</p>
+        <div class="edit-class-actions">
+          <button type="button" class="button outline" :disabled="classActionSubmitting" @click="closeDeleteClassModal">Cancelar</button>
+          <button type="button" class="button danger-button" :disabled="classActionSubmitting" @click="confirmDeleteClass">
+            {{ classActionSubmitting ? 'Agendando…' : 'Excluir turma' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
+
+<style scoped>
+.class-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.danger-button {
+  border: 1px solid var(--color-error);
+  background: var(--color-error);
+  color: #fff;
+}
+
+.danger-button:hover {
+  filter: brightness(.9);
+}
+
+.scheduled-deletion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 24px 0;
+  padding: 16px 20px;
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius-md);
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  font-weight: 700;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #0008;
+}
+
+.confirmation-modal {
+  width: min(100%, 480px);
+}
+
+.confirmation-modal h2 {
+  margin-top: 0;
+}
+
+.confirmation-modal p {
+  line-height: 1.6;
+}
+
+@media (max-width: 600px) {
+  .scheduled-deletion {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+</style>
