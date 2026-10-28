@@ -43,7 +43,7 @@ function submit() {
             <label>Nome<input v-model.trim="material.name" placeholder="Ex.: Lista de exercícios"></label>
             <label>Tipo<select v-model="material.tipo"><option value="PDF">PDF</option><option value="IMAGEM">IMAGEM</option><option value="VIDEO">VIDEO</option></select></label>
             <label>URL<input v-model.trim="material.url" type="text" inputmode="url" placeholder="https://..."></label>
-            <label class="material-description">Descrição (Opcional)<textarea v-model.trim="material.descricao" maxlength="500" rows="3" placeholder="Descreva brevemente este material"></textarea></label>
+            <label class="material-description">Descrição (Opcional)<textarea v-model.trim="material.descricao" maxlength="500" rows="3" placeholder="Descreva brevemente este material"></textarea><span class="character-count" :class="{ 'character-count-limit': material.descricao.length === 500 }">{{ material.descricao.length }}/500</span></label>
           </div>
         </div>
       </section>

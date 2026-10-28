@@ -18,6 +18,7 @@ const materialsLoading = ref(false)
 const materialsError = ref('')
 const showMaterialForm = ref(false)
 const materialForm = reactive({ name: '', tipo: 'PDF', url: '', descricao: '' })
+const materialEditandoId = ref(null)
 const materialSubmitting = ref(false)
 
 const educatorId = computed(() => {
@@ -41,6 +42,22 @@ function resetMaterialForm() {
   materialForm.descricao = ''
 }
 
+function cancelMaterialEdit() {
+  materialEditandoId.value = null
+  resetMaterialForm()
+  showMaterialForm.value = false
+}
+
+function editMaterial(material) {
+  materialEditandoId.value = material.id
+  materialForm.name = material.name || ''
+  materialForm.tipo = material.tipo || 'PDF'
+  materialForm.url = material.url || ''
+  materialForm.descricao = material.descricao || ''
+  showMaterialForm.value = true
+  materialsError.value = ''
+}
+
 async function loadMaterials() {
   materialsLoading.value = true
   materialsError.value = ''
@@ -55,7 +72,7 @@ async function loadMaterials() {
   }
 }
 
-async function addMaterial() {
+async function saveMaterial() {
   const name = materialForm.name.trim()
   const url = materialForm.url.trim()
   const descricao = materialForm.descricao.trim()
@@ -67,21 +84,48 @@ async function addMaterial() {
   materialSubmitting.value = true
   materialsError.value = ''
   try {
-    const result = await request('/material/register', {
-      method: 'POST',
-      token: props.session.token,
-      body: { name, tipo: materialForm.tipo, url, descricao, turmaCodigo: props.classroom.codigo }
-    })
-    materials.value.push(result && typeof result === 'object'
-      ? result
-      : { name, tipo: materialForm.tipo, url, descricao })
-    resetMaterialForm()
-    showMaterialForm.value = false
+    const isEditing = materialEditandoId.value !== null
+    const result = await request(
+      isEditing ? `/material/${materialEditandoId.value}` : '/material/register',
+      {
+        method: isEditing ? 'PUT' : 'POST',
+        token: props.session.token,
+        body: {
+          name,
+          tipo: materialForm.tipo,
+          url,
+          descricao,
+          turmaCodigo: props.classroom.codigo,
+          ...(isEditing ? {} : {})
+        }
+      }
+    )
+    const submittedMaterial = { name, tipo: materialForm.tipo, url, descricao }
+    if (isEditing) {
+      materials.value = materials.value.map(material =>
+        material.id === materialEditandoId.value
+          ? { ...material, ...submittedMaterial, ...(result && typeof result === 'object' ? result : {}) }
+          : material
+      )
+    } else {
+      materials.value.push(result && typeof result === 'object'
+        ? result
+        : submittedMaterial)
+    }
+    cancelMaterialEdit()
   } catch (cause) {
     materialsError.value = cause.message
   } finally {
     materialSubmitting.value = false
   }
+}
+
+function toggleMaterialForm() {
+  if (materialEditandoId.value !== null || showMaterialForm.value) {
+    cancelMaterialEdit()
+    return
+  }
+  showMaterialForm.value = true
 }
 
 async function removeMaterial(material) {
@@ -172,20 +216,20 @@ onMounted(loadMaterials)
               <h2>Materiais da turma</h2>
               <p>Links e conteúdos compartilhados pelo professor.</p>
             </div>
-            <button v-if="canManageMaterials" type="button" class="button outline" @click="showMaterialForm = !showMaterialForm">
-              {{ showMaterialForm ? 'Cancelar' : '+ Adicionar material' }}
+            <button v-if="canManageMaterials" type="button" class="button outline" @click="toggleMaterialForm">
+              {{ materialEditandoId !== null ? 'Cancelar Edição' : (showMaterialForm ? 'Cancelar' : '+ Adicionar material') }}
             </button>
           </div>
 
           <p v-if="materialsError" class="message error" role="alert">{{ materialsError }}</p>
-          <form v-if="showMaterialForm && canManageMaterials" class="material-entry form-card" @submit.prevent="addMaterial">
+          <form v-if="showMaterialForm && canManageMaterials" class="material-entry form-card" @submit.prevent="saveMaterial">
             <div class="material-fields">
               <label>Nome<input v-model.trim="materialForm.name" required placeholder="Ex.: Lista de exercícios"></label>
               <label>Tipo<select v-model="materialForm.tipo" required><option value="PDF">PDF</option><option value="IMAGEM">IMAGEM</option><option value="VIDEO">VIDEO</option></select></label>
               <label>URL<input v-model.trim="materialForm.url" required type="url" inputmode="url" placeholder="https://..."></label>
-              <label class="material-description">Descrição (Opcional)<textarea v-model.trim="materialForm.descricao" maxlength="500" rows="3" placeholder="Descreva brevemente este material"></textarea></label>
+              <label class="material-description">Descrição (Opcional)<textarea v-model.trim="materialForm.descricao" maxlength="500" rows="3" placeholder="Descreva brevemente este material"></textarea><span class="character-count" :class="{ 'character-count-limit': materialForm.descricao.length === 500 }">{{ materialForm.descricao.length }}/500</span></label>
             </div>
-            <button class="button dark" :disabled="materialSubmitting">{{ materialSubmitting ? 'Salvando…' : 'Salvar material' }}</button>
+            <button class="button dark" :disabled="materialSubmitting">{{ materialSubmitting ? 'Salvando…' : (materialEditandoId !== null ? 'Salvar Alterações' : 'Salvar material') }}</button>
           </form>
 
           <p v-if="materialsLoading" class="empty">Carregando materiais…</p>
@@ -194,6 +238,7 @@ onMounted(loadMaterials)
               <a :href="material.url" target="_blank" rel="noopener noreferrer">
                 <span>{{ material.tipo }}</span><span class="material-content"><strong>{{ material.name }}</strong><small v-if="material.descricao">{{ material.descricao }}</small></span><span>↗</span>
               </a>
+              <button v-if="canManageMaterials" type="button" class="text-button edit-material" :aria-label="`Editar ${material.name}`" @click="editMaterial(material)">✎ Editar</button>
               <button v-if="canManageMaterials" type="button" class="text-button remove-material" :aria-label="`Remover ${material.name}`" @click="removeMaterial(material)">🗑 Remover</button>
             </div>
           </div>
