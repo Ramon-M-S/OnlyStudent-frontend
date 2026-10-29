@@ -11,6 +11,8 @@ const props = defineProps({
 const mensagem = ref('')
 const enviando = ref(false)
 const erro = ref('')
+const erroExclusao = ref('')
+const excluindoAvisoId = ref(null)
 const avisos = ref(props.classroom.avisos || [])
 
 async function publicarAviso() {
@@ -26,13 +28,60 @@ async function publicarAviso() {
     avisos.value.unshift({
       id: Date.now(),
       mensagem: mensagem.value,
-      dataCriacao: new Date().toISOString()
+      dataCriacao: new Date().toISOString(),
+      autorId: props.session.id
     })
     mensagem.value = ''
   } catch (e) {
     erro.value = 'Não foi possível publicar o aviso.'
   } finally {
     enviando.value = false
+  }
+}
+
+function getAutorId(aviso) {
+  return aviso.autorId
+    ?? aviso.authorId
+    ?? aviso.idAutor
+    ?? aviso.autor?.id
+    ?? aviso.author?.id
+}
+
+function getAvisoId(aviso) {
+  return aviso.id ?? aviso.codigo
+}
+
+function podeExcluirAviso(aviso) {
+  const idEducator = props.classroom.idEducator
+    ?? props.classroom.idEducador
+    ?? props.classroom.educatorId
+  const usuarioEhAutor = getAutorId(aviso) != null &&
+    String(getAutorId(aviso)) === String(props.session.id)
+  const usuarioEhDono = idEducator != null &&
+    String(idEducator) === String(props.session.id)
+
+  return usuarioEhAutor || usuarioEhDono
+}
+
+async function excluirAviso(aviso) {
+  const avisoId = getAvisoId(aviso)
+  if (!avisoId) {
+    console.error('Aviso sem ID válido:', aviso)
+    return
+  }
+
+  excluindoAvisoId.value = avisoId
+  erroExclusao.value = ''
+  try {
+    await request(`/turma/${props.classroom.codigo}/avisos/${avisoId}`, {
+      method: 'DELETE',
+      token: props.session.token
+    })
+    avisos.value = avisos.value.filter(item => getAvisoId(item) !== avisoId)
+  } catch (e) {
+    erroExclusao.value = e.message || 'Não foi possível excluir o aviso.'
+  } finally {
+    excluindoAvisoId.value = null
   }
 }
 
@@ -65,15 +114,29 @@ function formatarData(dataString) {
 
     <!-- Lista de avisos -->
     <div class="announcements-list" style="margin-top: 20px; display: flex; flex-direction: column; gap: 15px;">
+      <p v-if="erroExclusao" class="message error">{{ erroExclusao }}</p>
       <div v-if="avisos.length === 0" class="empty">
         <h2>Nenhum aviso ainda</h2>
         <p>O professor não publicou nenhum aviso.</p>
       </div>
       
-      <div v-for="aviso in avisos" :key="aviso.id" class="announcement-card">
+      <div v-for="aviso in avisos" :key="getAvisoId(aviso)" class="announcement-card">
         <div class="announcement-header">
           <strong>{{ classroom.educator }}</strong>
-          <span class="date">{{ formatarData(aviso.dataCriacao) }}</span>
+          <div class="announcement-header-actions">
+            <span class="date">{{ formatarData(aviso.dataCriacao) }}</span>
+            <button
+              v-if="podeExcluirAviso(aviso)"
+              type="button"
+              class="delete-announcement"
+              :aria-label="`Excluir aviso de ${formatarData(aviso.dataCriacao)}`"
+              title="Excluir aviso"
+              :disabled="excluindoAvisoId === getAvisoId(aviso)"
+              @click="excluirAviso(aviso)"
+            >
+              🗑️
+            </button>
+          </div>
         </div>
         <p class="announcement-body">{{ aviso.mensagem }}</p>
       </div>
@@ -148,9 +211,41 @@ function formatarData(dataString) {
   align-items: center;
 }
 
+.announcement-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
 .date { 
   font-size: 0.85rem; 
   color: var(--color-muted); 
+}
+
+.delete-announcement {
+  padding: 0.15rem 0.3rem;
+  border: 0;
+  background: transparent;
+  color: #c94b4b;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  opacity: 0.8;
+}
+
+.delete-announcement:hover:not(:disabled),
+.delete-announcement:focus-visible {
+  opacity: 1;
+}
+
+.delete-announcement:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.delete-announcement:disabled {
+  cursor: wait;
+  opacity: 0.45;
 }
 
 .announcement-body { 
