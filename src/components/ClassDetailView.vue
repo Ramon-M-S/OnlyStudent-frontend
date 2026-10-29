@@ -226,7 +226,7 @@ async function saveMaterial() {
   materialsError.value = ''
   try {
     const isEditing = materialEditandoId.value !== null
-    const result = await request(
+    await request(
       isEditing ? `/material/${materialEditandoId.value}` : '/material/register',
       {
         method: isEditing ? 'PUT' : 'POST',
@@ -241,18 +241,7 @@ async function saveMaterial() {
         }
       }
     )
-    const submittedMaterial = { name, tipo: materialForm.tipo, url, descricao }
-    if (isEditing) {
-      materials.value = materials.value.map(material =>
-        material.id === materialEditandoId.value
-          ? { ...material, ...submittedMaterial, ...(result && typeof result === 'object' ? result : {}) }
-          : material
-      )
-    } else {
-      materials.value.push(result && typeof result === 'object'
-        ? result
-        : submittedMaterial)
-    }
+    await loadMaterials()
     cancelMaterialEdit()
   } catch (cause) {
     materialsError.value = cause.message
@@ -275,6 +264,10 @@ function iniciarRemocaoMaterial(material) {
 }
 
 async function confirmarRemocaoMaterial(material) {
+  if (!material || !material.id) {
+    materialsError.value = 'Erro: Material sem ID válido. Por favor, recarregue a página.'
+    return
+  }
   materialsError.value = ''
   try {
     await request(`/material/delete/${material.id}`, {
