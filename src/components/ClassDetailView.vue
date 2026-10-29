@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { request } from '../lib/api.js'
 import ClassStudentsView from './ClassStudentsView.vue'
 import ClassAnnouncementsView from './ClassAnnouncementsView.vue'
@@ -27,6 +27,8 @@ const materialSubmitting = ref(false)
 const showDeleteClassModal = ref(false)
 const classActionSubmitting = ref(false)
 const classActionError = ref('')
+const showClassSettingsMenu = ref(false)
+const classSettingsMenu = ref(null)
 
 const educatorId = computed(() => {
   const classroom = props.classroom
@@ -50,6 +52,27 @@ const isOwner = computed(() => {
 
 const deletionScheduled = computed(() => classroomData.dataExclusaoAgendada != null)
 
+const tempoRestanteExclusao = computed(() => {
+  if (!classroomData.dataExclusaoAgendada) return ''
+
+  const targetDate = new Date(classroomData.dataExclusaoAgendada).getTime()
+  const diff = targetDate - Date.now()
+
+  if (diff <= 0) return 'a qualquer momento'
+
+  const dias = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const horas = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+  const minutos = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+
+  if (dias > 0) {
+    return `em ${dias} dia${dias > 1 ? 's' : ''}${horas > 0 ? ` e ${horas} hora${horas > 1 ? 's' : ''}` : ''}`
+  }
+  if (horas > 0) {
+    return `em ${horas} hora${horas > 1 ? 's' : ''}${minutos > 0 ? ` e ${minutos} minuto${minutos > 1 ? 's' : ''}` : ''}`
+  }
+  return `em ${minutos} minuto${minutos > 1 ? 's' : ''}`
+})
+
 const canManageMaterials = computed(() => {
   if (props.session.role !== 'educator') return false
   if (deletionScheduled.value) return false
@@ -67,6 +90,7 @@ async function reloadClassroom() {
 }
 
 function openDeleteClassModal() {
+  showClassSettingsMenu.value = false
   classActionError.value = ''
   showDeleteClassModal.value = true
 }
@@ -96,7 +120,7 @@ async function cancelScheduledDeletion() {
   classActionSubmitting.value = true
   classActionError.value = ''
   try {
-    await request(`/turma/${props.classroom.codigo}`, {
+    await request(`/turma/${props.classroom.codigo}/cancelar-exclusao`, {
       method: 'PATCH',
       token: props.session.token
     })
@@ -114,6 +138,7 @@ function syncClassroomForm() {
 }
 
 function beginClassEdit() {
+  showClassSettingsMenu.value = false
   syncClassroomForm()
   isEditingClass.value = true
 }
@@ -273,6 +298,26 @@ watch(() => props.classroom, (value) => {
 }, { immediate: true, deep: true })
 watch(() => props.classroom.codigo, loadMaterials)
 onMounted(loadMaterials)
+
+function closeClassSettingsMenuOnOutsideClick(event) {
+  if (classSettingsMenu.value && !classSettingsMenu.value.contains(event.target)) {
+    showClassSettingsMenu.value = false
+  }
+}
+
+function closeClassSettingsMenuOnEscape(event) {
+  if (event.key === 'Escape') showClassSettingsMenu.value = false
+}
+
+onMounted(() => {
+  document.addEventListener('pointerdown', closeClassSettingsMenuOnOutsideClick)
+  document.addEventListener('keydown', closeClassSettingsMenuOnEscape)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('pointerdown', closeClassSettingsMenuOnOutsideClick)
+  document.removeEventListener('keydown', closeClassSettingsMenuOnEscape)
+})
 </script>
 
 <template>
@@ -281,14 +326,32 @@ onMounted(loadMaterials)
       <div>
         <span class="eyebrow">TURMA</span>
         <div class="class-heading-row">
-          <div v-if="isOwner && !deletionScheduled && !isEditingClass" class="class-actions">
+          <div
+            v-if="isOwner && !deletionScheduled && !isEditingClass"
+            ref="classSettingsMenu"
+            class="class-settings"
+          >
             <button
               type="button"
-              class="text-button edit-class-button"
-              aria-label="Editar turma"
-              @click="beginClassEdit"
-            >✎</button>
-            <button type="button" class="button danger-button" @click="openDeleteClassModal">Excluir turma</button>
+              class="class-settings-trigger"
+              aria-label="Configurações da turma"
+              :aria-expanded="showClassSettingsMenu"
+              aria-haspopup="menu"
+              @click="showClassSettingsMenu = !showClassSettingsMenu"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="gear-icon" aria-hidden="true">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+            <ul v-if="showClassSettingsMenu" class="class-settings-menu" role="menu">
+              <li role="none">
+                <button type="button" role="menuitem" @click="beginClassEdit">✎ <span>Editar turma</span></button>
+              </li>
+              <li role="none">
+                <button type="button" role="menuitem" class="class-settings-delete" @click="openDeleteClassModal">🗑️ <span>Excluir turma</span></button>
+              </li>
+            </ul>
           </div>
           <h1 v-if="!isEditingClass">{{ classroomData.name }}</h1>
         </div>
@@ -325,7 +388,12 @@ onMounted(loadMaterials)
     
     <p v-if="error" class="message error" role="alert">{{ error }}</p>
     <div v-if="deletionScheduled" class="scheduled-deletion" role="alert">
-      <span>Esta turma está agendada para exclusão.</span>
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alert-icon" aria-hidden="true">
+        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <span>Atenção: Esta turma será excluída {{ tempoRestanteExclusao }}.</span>
       <button
         v-if="isOwner"
         type="button"
@@ -455,21 +523,19 @@ onMounted(loadMaterials)
 </template>
 
 <style scoped>
-.class-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
 .danger-button {
-  border: 1px solid var(--color-error);
-  background: var(--color-error);
-  color: #fff;
+  border: 1px solid #dc2626; /* Vermelho forte */
+  background: #dc2626;
+  color: #ffffff;
+  font-weight: 600;
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
-.danger-button:hover {
-  filter: brightness(.9);
+.danger-button:hover:not(:disabled) {
+  background: #b91c1c; /* Vermelho mais escuro ao passar o mouse */
+  border-color: #b91c1c;
 }
+
 
 .scheduled-deletion {
   display: flex;
@@ -483,6 +549,10 @@ onMounted(loadMaterials)
   background: var(--color-error-bg);
   color: var(--color-error);
   font-weight: 700;
+}
+
+.scheduled-deletion .alert-icon {
+  flex: 0 0 auto;
 }
 
 .modal-backdrop {
