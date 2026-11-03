@@ -15,7 +15,9 @@ const emit = defineEmits(['navigate'])
 const activeTab = ref('materials')
 const classroomData = reactive({ ...props.classroom })
 const isEditingClass = ref(false)
-const classForm = reactive({ name: '', description: '' })
+const classForm = reactive({ name: '', description: '', coverImageUrl: '', profileImageUrl: '' })
+const classEditError = ref('')
+const classEditSubmitting = ref(false)
 const materials = ref([])
 const materialsLoading = ref(false)
 const materialsError = ref('')
@@ -51,6 +53,10 @@ const isOwner = computed(() => {
 })
 
 const deletionScheduled = computed(() => classroomData.dataExclusaoAgendada != null)
+const classroomInitial = computed(() => String(classroomData.name || '?').trim().charAt(0).toUpperCase() || '?')
+const classroomBannerStyle = computed(() => classroomData.coverImageUrl
+  ? { backgroundImage: `url("${classroomData.coverImageUrl}")` }
+  : {})
 
 const tempoRestanteExclusao = computed(() => {
   if (!classroomData.dataExclusaoAgendada) return ''
@@ -135,16 +141,20 @@ async function cancelScheduledDeletion() {
 function syncClassroomForm() {
   classForm.name = classroomData.name || ''
   classForm.description = classroomData.description || ''
+  classForm.coverImageUrl = classroomData.coverImageUrl || ''
+  classForm.profileImageUrl = classroomData.profileImageUrl || ''
 }
 
 function beginClassEdit() {
   showClassSettingsMenu.value = false
+  classEditError.value = ''
   syncClassroomForm()
   isEditingClass.value = true
 }
 
 function cancelClassEdit() {
   isEditingClass.value = false
+  classEditError.value = ''
   syncClassroomForm()
 }
 
@@ -153,10 +163,12 @@ async function saveClassEdit() {
   const description = classForm.description.trim()
 
   if (!name) {
-    materialsError.value = 'Informe o nome da turma.'
+    classEditError.value = 'Informe o nome da turma.'
     return
   }
 
+  classEditSubmitting.value = true
+  classEditError.value = ''
   try {
     await request(`/turma/${props.classroom.codigo}`, {
       method: 'PUT',
@@ -165,14 +177,18 @@ async function saveClassEdit() {
         name,
         description,
         idEducator: props.classroom.idEducator,
-        price: props.classroom.price || 0
+        price: props.classroom.price || 0,
+        coverImageUrl: classForm.coverImageUrl.trim(),
+        profileImageUrl: classForm.profileImageUrl.trim()
       }
     })
 
-    Object.assign(classroomData, { ...props.classroom, name, description })
+    await reloadClassroom()
     isEditingClass.value = false
   } catch (cause) {
-    materialsError.value = cause.message
+    classEditError.value = cause.message
+  } finally {
+    classEditSubmitting.value = false
   }
 }
 
@@ -315,6 +331,12 @@ onUnmounted(() => {
 
 <template>
   <section class="container workspace">
+    <div class="class-visual" :style="classroomBannerStyle">
+      <div class="class-avatar">
+        <img v-if="classroomData.profileImageUrl" :src="classroomData.profileImageUrl" :alt="`Foto de perfil da turma ${classroomData.name}`">
+        <span v-else>{{ classroomInitial }}</span>
+      </div>
+    </div>
     <div class="workspace-heading">
       <div>
         <span class="eyebrow">TURMA</span>
@@ -370,9 +392,20 @@ onUnmounted(() => {
             ></textarea>
           </div>
 
+          <div class="form-field">
+            <label>URL da Foto de Perfil</label>
+            <input v-model="classForm.profileImageUrl" type="url" placeholder="https://...">
+          </div>
+
+          <div class="form-field">
+            <label>URL da Capa</label>
+            <input v-model="classForm.coverImageUrl" type="url" placeholder="https://...">
+          </div>
+
+          <p v-if="classEditError" class="message error" role="alert">{{ classEditError }}</p>
           <div class="edit-class-actions">
-            <button type="button" class="button edit-class-save" @click="saveClassEdit">Salvar</button>
-            <button type="button" class="button outline" @click="cancelClassEdit">Cancelar</button>
+            <button type="button" class="button edit-class-save" :disabled="classEditSubmitting" @click="saveClassEdit">{{ classEditSubmitting ? 'Salvando…' : 'Salvar' }}</button>
+            <button type="button" class="button outline" :disabled="classEditSubmitting" @click="cancelClassEdit">Cancelar</button>
           </div>
         </div>
       </div>
@@ -401,7 +434,7 @@ onUnmounted(() => {
       <p v-if="!isEditingClass">{{ classroomData.description }}</p>
       
       <!-- Barra de Abas: Nova Ordem e Fontes -->
-      <div class="class-tabs" role="tablist" aria-label="Conteúdo da turma" style="font-size: 1.1rem;">
+      <div class="class-tabs" role="tablist" aria-label="Conteúdo da turma">
         <button
           id="announcements-tab"
           class="class-tab"
