@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import App from './App.vue'
+import CatalogView from './components/CatalogView.vue'
 
 beforeEach(() => {
   localStorage.clear()
@@ -9,6 +10,22 @@ beforeEach(() => {
 })
 
 describe('Study Hub', () => {
+  it('exibe a foto de perfil da turma no catálogo e usa a inicial como fallback', () => {
+    const app = mount(CatalogView, {
+      props: {
+        classes: [],
+        catalog: [
+          { codigo: 1, name: 'Laboratório', profileImageUrl: 'https://example.com/lab.png' },
+          { codigo: 2, name: 'matemática' }
+        ]
+      }
+    })
+
+    expect(app.find('.class-icon img').attributes('src')).toBe('https://example.com/lab.png')
+    expect(app.find('.class-icon img').attributes('alt')).toBe('Foto de perfil da turma Laboratório')
+    expect(app.findAll('.class-icon > span').map(item => item.text())).toEqual(['M'])
+  })
+
   it('abre a página com ações de acesso e sem indicadores fictícios', () => {
     const app = mount(App)
     expect(app.find('h1').text()).toContain('Aprender fica mais fácil')
