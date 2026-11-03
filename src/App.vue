@@ -179,6 +179,10 @@ async function createClass({ materiais = [], ...form }) {
 }
 
 async function joinClass(item) {
+  if (String(item.status || 'ATIVA').toUpperCase() !== 'ATIVA') {
+    error.value = 'Esta turma não está aceitando novos alunos.'
+    return
+  }
   loading.value = true
   error.value = ''
   try {

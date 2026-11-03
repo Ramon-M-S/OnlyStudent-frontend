@@ -31,6 +31,15 @@ const classActionSubmitting = ref(false)
 const classActionError = ref('')
 const showClassSettingsMenu = ref(false)
 const classSettingsMenu = ref(null)
+const showStatusModal = ref(false)
+const statusSubmitting = ref(false)
+const statusError = ref('')
+
+const statusOptions = [
+  { value: 'ATIVA', label: 'Ativa', description: 'Aceita novos alunos', icon: '🟢' },
+  { value: 'BLOQUEADA', label: 'Bloqueada', description: 'Não aceita novos alunos', icon: '🟡' },
+  { value: 'DESATIVADA', label: 'Desativada', description: 'Turma encerrada', icon: '🔴' }
+]
 
 const educatorId = computed(() => {
   const classroom = props.classroom
@@ -54,6 +63,9 @@ const isOwner = computed(() => {
 
 const deletionScheduled = computed(() => classroomData.dataExclusaoAgendada != null)
 const classroomInitial = computed(() => String(classroomData.name || '?').trim().charAt(0).toUpperCase() || '?')
+const classroomStatus = computed(() => String(classroomData.status || 'ATIVA').toUpperCase())
+const classroomStatusOption = computed(() => statusOptions.find(option => option.value === classroomStatus.value) || statusOptions[0])
+const isClassroomActive = computed(() => classroomStatus.value === 'ATIVA')
 const classroomBannerStyle = computed(() => classroomData.coverImageUrl
   ? { backgroundImage: `url("${classroomData.coverImageUrl}")` }
   : {})
@@ -150,6 +162,39 @@ function beginClassEdit() {
   classEditError.value = ''
   syncClassroomForm()
   isEditingClass.value = true
+}
+
+function openStatusModal() {
+  showClassSettingsMenu.value = false
+  statusError.value = ''
+  showStatusModal.value = true
+}
+
+function closeStatusModal() {
+  if (!statusSubmitting.value) showStatusModal.value = false
+}
+
+async function changeClassroomStatus(status) {
+  if (status === classroomStatus.value) {
+    showStatusModal.value = false
+    return
+  }
+
+  statusSubmitting.value = true
+  statusError.value = ''
+  try {
+    await request(`/turma/${props.classroom.codigo}/status`, {
+      method: 'PATCH',
+      token: props.session.token,
+      body: { status }
+    })
+    classroomData.status = status
+    showStatusModal.value = false
+  } catch (cause) {
+    statusError.value = cause.message
+  } finally {
+    statusSubmitting.value = false
+  }
 }
 
 function cancelClassEdit() {
@@ -364,11 +409,17 @@ onUnmounted(() => {
                 <button type="button" role="menuitem" @click="beginClassEdit">✎ <span>Editar turma</span></button>
               </li>
               <li role="none">
+                <button type="button" role="menuitem" @click="openStatusModal">⚙️ <span>Status da Turma</span></button>
+              </li>
+              <li role="none">
                 <button type="button" role="menuitem" class="class-settings-delete" @click="openDeleteClassModal">🗑️ <span>Excluir turma</span></button>
               </li>
             </ul>
           </div>
-          <h1 v-if="!isEditingClass">{{ classroomData.name }}</h1>
+          <div v-if="!isEditingClass" class="class-title-group">
+            <h1>{{ classroomData.name }}</h1>
+            <span v-if="!isClassroomActive" class="class-status-badge" :class="`status-${classroomStatus.toLowerCase()}`">{{ classroomStatusOption.label }}</span>
+          </div>
         </div>
         <div v-if="isEditingClass" class="form-card edit-classroom-form">
           <div class="form-field">
@@ -413,6 +464,10 @@ onUnmounted(() => {
     </div>
     
     <p v-if="error" class="message error" role="alert">{{ error }}</p>
+    <div v-if="!isClassroomActive" class="class-status-alert" :class="`status-alert-${classroomStatus.toLowerCase()}`" role="alert">
+      <strong>Esta turma está {{ classroomStatusOption.label.toLowerCase() }}.</strong>
+      <span>{{ classroomStatus === 'BLOQUEADA' ? 'Novos alunos não podem entrar enquanto ela estiver bloqueada.' : 'A turma foi encerrada e não aceita novas atividades.' }}</span>
+    </div>
     <div v-if="deletionScheduled" class="scheduled-deletion" role="alert">
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alert-icon" aria-hidden="true">
         <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
@@ -545,6 +600,32 @@ onUnmounted(() => {
         </div>
       </div>
     </div>
+
+    <div v-if="showStatusModal" class="modal-backdrop" role="presentation" @click.self="closeStatusModal">
+      <div class="form-card status-modal" role="dialog" aria-modal="true" aria-labelledby="class-status-title">
+        <h2 id="class-status-title">Status da turma</h2>
+        <p>Escolha como os alunos poderão acessar esta turma.</p>
+        <div class="status-options">
+          <button
+            v-for="option in statusOptions"
+            :key="option.value"
+            type="button"
+            class="status-option"
+            :class="{ selected: classroomStatus === option.value }"
+            :aria-pressed="classroomStatus === option.value"
+            :disabled="statusSubmitting"
+            @click="changeClassroomStatus(option.value)"
+          >
+            <span class="status-option-icon" aria-hidden="true">{{ option.icon }}</span>
+            <span><strong>{{ option.label }}</strong><small>{{ option.description }}</small></span>
+          </button>
+        </div>
+        <p v-if="statusError" class="message error" role="alert">{{ statusError }}</p>
+        <div class="edit-class-actions">
+          <button type="button" class="button outline" :disabled="statusSubmitting" @click="closeStatusModal">Cancelar</button>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
 
@@ -602,6 +683,26 @@ onUnmounted(() => {
 .confirmation-modal p {
   line-height: 1.6;
 }
+
+.class-title-group { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.class-title-group h1 { margin-bottom: 0; }
+.class-status-badge, .class-status-alert { border-radius: var(--radius-sm); font-weight: 700; }
+.class-status-badge { padding: 6px 10px; font-size: .75rem; }
+.status-bloqueada { background: #fff3c4; color: #806000; }
+.status-desativada { background: var(--color-error-bg); color: var(--color-error); }
+.class-status-alert { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 24px 0; padding: 14px 16px; border: 1px solid currentColor; line-height: 1.5; }
+.status-alert-bloqueada { background: #fff9df; color: #806000; }
+.status-alert-desativada { background: var(--color-error-bg); color: var(--color-error); }
+.status-modal { width: min(100%, 520px); }
+.status-modal h2 { margin-top: 0; }
+.status-modal > p { line-height: 1.5; }
+.status-options { display: grid; gap: 10px; margin: 22px 0; }
+.status-option { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-text); text-align: left; }
+.status-option:hover:not(:disabled), .status-option.selected { border-color: var(--color-focus); background: var(--color-hover); }
+.status-option.selected { box-shadow: 0 0 0 2px var(--color-focus-ring); }
+.status-option-icon { font-size: 1.35rem; }
+.status-option strong, .status-option small { display: block; }
+.status-option small { margin-top: 3px; color: var(--color-muted); font-size: .75rem; }
 
 @media (max-width: 600px) {
   .scheduled-deletion {
