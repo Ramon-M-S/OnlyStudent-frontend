@@ -9,6 +9,7 @@ import DashboardView from './components/DashboardView.vue'
 import CatalogView from './components/CatalogView.vue'
 import ClassFormView from './components/ClassFormView.vue'
 import ClassDetailView from './components/ClassDetailView.vue'
+import ProfileView from './components/ProfileView.vue'
 
 function savedSession() {
   try { return JSON.parse(localStorage.getItem('onlystudent.session') || 'null') }
@@ -25,6 +26,7 @@ const canViewStudents = ref(false)
 const loading = ref(false)
 const error = ref('')
 const notice = ref('')
+const profile = ref(null)
 
 function logout() {
   localStorage.removeItem('onlystudent.session')
@@ -73,6 +75,32 @@ async function loadCatalog() {
   finally { loading.value = false }
 }
 
+async function loadProfile() {
+  loading.value = true
+  error.value = ''
+  profile.value = null
+  try {
+    const role = String(session.value.role).toLowerCase()
+    profile.value = await call(`/${role}/profile`)
+  } catch (cause) { handleError(cause) }
+  finally { loading.value = false }
+}
+
+async function updateProfile(payload) {
+  loading.value = true
+  error.value = ''
+  try {
+    const role = String(session.value.role).toLowerCase()
+    const updated = await call(`/${role}/profile`, { method: 'PUT', body: payload })
+    const nextSession = { ...session.value, ...(updated || {}), name: updated?.name || payload.name, telephone: updated?.telephone || payload.telephone }
+    session.value = nextSession
+    localStorage.setItem('onlystudent.session', JSON.stringify(nextSession))
+    profile.value = { ...profile.value, ...(updated || {}), name: nextSession.name, telefone: nextSession.telephone }
+    notice.value = 'Perfil atualizado com sucesso.'
+  } catch (cause) { handleError(cause) }
+  finally { loading.value = false }
+}
+
 function navigate(next, { replace = false } = {}) {
   error.value = ''
   notice.value = ''
@@ -82,6 +110,7 @@ function navigate(next, { replace = false } = {}) {
   view.value = next
   if (next === 'dashboard') loadClasses()
   if (next === 'catalog') loadCatalog()
+  if (next === 'profile') loadProfile()
 }
 
 async function authenticate(form) {
@@ -142,6 +171,7 @@ function onHistoryChange() {
     view.value = route.view
     if (route.view === 'dashboard') loadClasses()
     if (route.view === 'catalog') loadCatalog()
+    if (route.view === 'profile') loadProfile()
   }
 }
 
@@ -202,6 +232,7 @@ onMounted(() => {
     if (initialRoute.view === 'class') showClass(initialRoute.classroomId, false)
     else if (view.value === 'catalog') loadCatalog()
     else if (view.value === 'dashboard') loadClasses()
+    else if (view.value === 'profile') loadProfile()
   } else if (!['home', 'login', 'register'].includes(initialRoute.view)) {
     window.history.replaceState({}, '', routeFor('login'))
   }
@@ -218,6 +249,7 @@ onUnmounted(() => window.removeEventListener('popstate', onHistoryChange))
       <DashboardView v-else-if="view === 'dashboard'" :session="session" :classes="classes" :loading="loading" :error="error" :notice="notice" @navigate="navigate" @open-class="openClass" />
       <CatalogView v-else-if="view === 'catalog'" :classes="classes" :catalog="catalog" :loading="loading" :error="error" @navigate="navigate" @join="joinClass" />
       <ClassFormView v-else-if="view === 'create'" :loading="loading" :error="error" @navigate="navigate" @submit="createClass" />
+      <ProfileView v-else-if="view === 'profile'" :session="session" :profile="profile" :loading="loading" :error="error" :notice="notice" @navigate="navigate" @submit="updateProfile" />
       
       <!-- CORREÇÃO AQUI: Adicionado o :session="session" -->
       <ClassDetailView 

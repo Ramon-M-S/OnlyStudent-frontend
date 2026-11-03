@@ -4,7 +4,8 @@ const paths = {
   register: '/cadastro',
   dashboard: '/turmas',
   catalog: '/explorar',
-  create: '/nova-turma'
+  create: '/nova-turma',
+  profile: '/perfil'
 }
 
 export function routeFor(view, classroomId) {

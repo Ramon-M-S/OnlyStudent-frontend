@@ -271,6 +271,21 @@
   min-width: 0;
 }
 
+.profile-form {
+  width: min(100%, 600px);
+  margin: 28px auto 0;
+}
+
+.profile-form input:disabled {
+  cursor: not-allowed;
+  opacity: .65;
+  background: var(--color-hover);
+}
+
+.profile-form .button {
+  margin-top: 8px;
+}
+
 .edit-classroom-form {
   width: 100% !important;
   max-width: 600px;
