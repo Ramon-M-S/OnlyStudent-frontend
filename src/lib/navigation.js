@@ -5,7 +5,8 @@ const paths = {
   dashboard: '/turmas',
   catalog: '/explorar',
   create: '/nova-turma',
-  profile: '/perfil'
+  profile: '/perfil',
+  admin: '/admin'
 }
 
 export function routeFor(view, classroomId) {

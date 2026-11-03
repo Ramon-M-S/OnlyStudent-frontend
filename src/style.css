@@ -286,6 +286,58 @@
   margin-top: 8px;
 }
 
+.admin-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 680px;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 17px 20px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  font-size: .8125rem;
+}
+
+.admin-table th {
+  color: var(--color-muted);
+  font-size: .6875rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.admin-table tr:last-child td { border-bottom: 0; }
+.admin-actions-heading { text-align: right !important; }
+.admin-actions { display: flex; justify-content: flex-end; gap: 12px; white-space: nowrap; }
+.text-button.danger { color: var(--color-error); }
+.modal-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 24px; background: #10130d99; }
+.admin-modal { width: min(100%, 560px); max-height: calc(100vh - 48px); overflow-y: auto; }
+.admin-modal-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+.admin-modal h2 { margin: 8px 0 16px; font-family: var(--font-heading); font-size: 1.35rem; letter-spacing: -.04em; }
+.modal-close { width: 34px; height: 34px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: transparent; color: var(--color-text); font-size: 1.35rem; line-height: 1; }
+.modal-close:hover { background: var(--color-hover); }
+.admin-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+
+@media(max-width:600px) {
+  .admin-management .workspace-heading { align-items: stretch; flex-direction: column; }
+  .admin-management .workspace-heading .button { width: 100%; }
+  .admin-table { min-width: 0; }
+  .admin-table thead { display: none; }
+  .admin-table tr { display: block; padding: 10px 0; }
+  .admin-table td { display: flex; justify-content: space-between; gap: 16px; padding: 9px 16px; border-bottom: 0; text-align: right; }
+  .admin-table td::before { content: attr(data-label); color: var(--color-muted); font-weight: 700; text-align: left; }
+  .admin-actions { justify-content: flex-end; }
+  .admin-actions::before { margin-right: auto; }
+}
+
 .edit-classroom-form {
   width: 100% !important;
   max-width: 600px;

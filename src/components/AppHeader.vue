@@ -16,7 +16,8 @@ function logout() { menuOpen.value = false; emit('logout') }
           <button :class="{ active: view === 'dashboard' }" @click="go('dashboard')">Minhas turmas</button>
           <button v-if="session.role === 'student'" :class="{ active: view === 'catalog' }" @click="go('catalog')">Explorar turmas</button>
           <button v-if="session.role === 'educator'" class="nav-primary" @click="go('create')">Criar turma</button>
-          <span class="nav-user">{{ session.name.split(' ')[0] }}</span>
+          <button v-if="String(session.role).toUpperCase() === 'ADMIN'" :class="{ active: view === 'admin' }" @click="go('admin')">Gerenciar Admins</button>
+          <button class="nav-user" :class="{ active: view === 'profile' }" @click="go('profile')">{{ session.name.split(' ')[0] }}</button>
           <button @click="logout">Sair</button>
         </template>
         <template v-else>

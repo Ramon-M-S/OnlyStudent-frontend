@@ -10,6 +10,7 @@ import CatalogView from './components/CatalogView.vue'
 import ClassFormView from './components/ClassFormView.vue'
 import ClassDetailView from './components/ClassDetailView.vue'
 import ProfileView from './components/ProfileView.vue'
+import AdminManagementView from './components/AdminManagementView.vue'
 
 function savedSession() {
   try { return JSON.parse(localStorage.getItem('onlystudent.session') || 'null') }
@@ -27,6 +28,7 @@ const loading = ref(false)
 const error = ref('')
 const notice = ref('')
 const profile = ref(null)
+const admins = ref([])
 
 function logout() {
   localStorage.removeItem('onlystudent.session')
@@ -101,6 +103,54 @@ async function updateProfile(payload) {
   finally { loading.value = false }
 }
 
+const isAdmin = () => String(session.value?.role).toUpperCase() === 'ADMIN'
+
+async function loadAdmins() {
+  if (!isAdmin()) return
+  loading.value = true
+  error.value = ''
+  try {
+    const result = await call('/admin')
+    admins.value = Array.isArray(result) ? result : (result?.content || result?.admins || [])
+  } catch (cause) { handleError(cause) }
+  finally { loading.value = false }
+}
+
+async function createAdmin({ payload, done }) {
+  loading.value = true
+  error.value = ''
+  try {
+    await call('/admin', { method: 'POST', body: payload })
+    done(true)
+    notice.value = 'Administrador criado com sucesso.'
+    await loadAdmins()
+  } catch (cause) { done(false, cause.message); error.value = cause.message }
+  finally { loading.value = false }
+}
+
+async function updateAdmin({ id, payload, done }) {
+  loading.value = true
+  error.value = ''
+  try {
+    await call(`/admin/${id}`, { method: 'PUT', body: payload })
+    done(true)
+    notice.value = 'Administrador atualizado com sucesso.'
+    await loadAdmins()
+  } catch (cause) { done(false, cause.message); error.value = cause.message }
+  finally { loading.value = false }
+}
+
+async function deleteAdmin({ id, done }) {
+  loading.value = true
+  error.value = ''
+  try {
+    await call(`/admin/${id}`, { method: 'DELETE' })
+    notice.value = 'Administrador excluído com sucesso.'
+    await loadAdmins()
+  } catch (cause) { error.value = cause.message }
+  finally { done(); loading.value = false }
+}
+
 function navigate(next, { replace = false } = {}) {
   error.value = ''
   notice.value = ''
@@ -111,6 +161,7 @@ function navigate(next, { replace = false } = {}) {
   if (next === 'dashboard') loadClasses()
   if (next === 'catalog') loadCatalog()
   if (next === 'profile') loadProfile()
+  if (next === 'admin' && isAdmin()) loadAdmins()
 }
 
 async function authenticate(form) {
@@ -164,6 +215,10 @@ function onHistoryChange() {
     navigate('login', { replace: true })
     return
   }
+  if (route.view === 'admin' && !isAdmin()) {
+    navigate('dashboard', { replace: true })
+    return
+  }
   error.value = ''
   selected.value = null
   if (route.view === 'class') showClass(route.classroomId, false)
@@ -172,6 +227,7 @@ function onHistoryChange() {
     if (route.view === 'dashboard') loadClasses()
     if (route.view === 'catalog') loadCatalog()
     if (route.view === 'profile') loadProfile()
+    if (route.view === 'admin') loadAdmins()
   }
 }
 
@@ -233,6 +289,7 @@ onMounted(() => {
     else if (view.value === 'catalog') loadCatalog()
     else if (view.value === 'dashboard') loadClasses()
     else if (view.value === 'profile') loadProfile()
+    else if (view.value === 'admin') loadAdmins()
   } else if (!['home', 'login', 'register'].includes(initialRoute.view)) {
     window.history.replaceState({}, '', routeFor('login'))
   }
@@ -250,6 +307,7 @@ onUnmounted(() => window.removeEventListener('popstate', onHistoryChange))
       <CatalogView v-else-if="view === 'catalog'" :classes="classes" :catalog="catalog" :loading="loading" :error="error" @navigate="navigate" @join="joinClass" />
       <ClassFormView v-else-if="view === 'create'" :loading="loading" :error="error" @navigate="navigate" @submit="createClass" />
       <ProfileView v-else-if="view === 'profile'" :session="session" :profile="profile" :loading="loading" :error="error" :notice="notice" @navigate="navigate" @submit="updateProfile" />
+      <AdminManagementView v-else-if="view === 'admin'" :session="session" :admins="admins" :loading="loading" :error="error" :notice="notice" @navigate="navigate" @create="createAdmin" @update="updateAdmin" @delete="deleteAdmin" />
       
       <!-- CORREÇÃO AQUI: Adicionado o :session="session" -->
       <ClassDetailView 
