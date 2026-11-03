@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import App from './App.vue'
 import CatalogView from './components/CatalogView.vue'
+import ClassAnnouncementsView from './components/ClassAnnouncementsView.vue'
 
 beforeEach(() => {
   localStorage.clear()
@@ -10,6 +11,52 @@ beforeEach(() => {
 })
 
 describe('Study Hub', () => {
+  it('recarrega a lista depois de confirmar a exclusão de um aviso', async () => {
+    const fetchMock = vi.fn().mockImplementation((url, options) => {
+      if (options?.method === 'DELETE') {
+        return Promise.resolve({
+          ok: true,
+          status: 204,
+          text: async () => ''
+        })
+      }
+
+      expect(url).toBe('/api/turma/23/avisos')
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify([
+          { id: 102, mensagem: 'Segundo aviso', dataCriacao: '2026-01-02T10:00:00Z' }
+        ])
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const app = mount(ClassAnnouncementsView, {
+      props: {
+        classroom: {
+          codigo: 23,
+          educator: 'Marina Costa',
+          idEducator: 7,
+          avisos: [
+            { id: '101', mensagem: 'Primeiro aviso', dataCriacao: '2026-01-01T10:00:00Z' },
+            { id: 102, mensagem: 'Segundo aviso', dataCriacao: '2026-01-02T10:00:00Z' }
+          ]
+        },
+        session: { id: 7, token: 'token' },
+        canViewStudents: true
+      }
+    })
+
+    await app.findAll('.delete-announcement')[0].trigger('click')
+    await app.find('.confirm-delete-announcement').trigger('click')
+    await flushPromises()
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/turma/23/avisos/101', expect.objectContaining({ method: 'DELETE' }))
+    expect(app.findAll('.announcement-card')).toHaveLength(1)
+    expect(app.text()).toContain('Segundo aviso')
+    expect(app.text()).not.toContain('Primeiro aviso')
+  })
+
   it('exibe a foto de perfil da turma no catálogo e usa a inicial como fallback', () => {
     const app = mount(CatalogView, {
       props: {
