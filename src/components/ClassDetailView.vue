@@ -62,6 +62,7 @@ const isOwner = computed(() => {
 })
 
 const deletionScheduled = computed(() => classroomData.dataExclusaoAgendada != null)
+const hasEnrolledStudents = computed(() => (classroomData.nomeAlunos?.length || 0) > 0)
 const classroomInitial = computed(() => String(classroomData.name || '?').trim().charAt(0).toUpperCase() || '?')
 const classroomStatus = computed(() => String(classroomData.status || 'ATIVA').toUpperCase())
 const classroomStatusOption = computed(() => statusOptions.find(option => option.value === classroomStatus.value) || statusOptions[0])
@@ -125,8 +126,12 @@ async function confirmDeleteClass() {
       method: 'DELETE',
       token: props.session.token
     })
-    await reloadClassroom()
     showDeleteClassModal.value = false
+    if (!hasEnrolledStudents.value) {
+      emit('navigate', 'dashboard')
+      return
+    }
+    await reloadClassroom()
   } catch (cause) {
     classActionError.value = cause.message
   } finally {
@@ -591,11 +596,11 @@ onUnmounted(() => {
     <div v-if="showDeleteClassModal" class="modal-backdrop" role="presentation" @click.self="closeDeleteClassModal">
       <div class="form-card confirmation-modal" role="dialog" aria-modal="true" aria-labelledby="delete-class-title">
         <h2 id="delete-class-title">Excluir turma?</h2>
-        <p>A turma será excluída em 3 dias. Os alunos serão notificados. Deseja continuar?</p>
+        <p>{{ hasEnrolledStudents ? 'A turma será excluída em 3 dias. Os alunos serão notificados. Deseja continuar?' : 'Como não há alunos matriculados, esta turma será excluída imediatamente.' }}</p>
         <div class="edit-class-actions">
           <button type="button" class="button outline" :disabled="classActionSubmitting" @click="closeDeleteClassModal">Cancelar</button>
           <button type="button" class="button danger-button" :disabled="classActionSubmitting" @click="confirmDeleteClass">
-            {{ classActionSubmitting ? 'Agendando…' : 'Excluir turma' }}
+            {{ classActionSubmitting ? (hasEnrolledStudents ? 'Agendando…' : 'Excluindo…') : (hasEnrolledStudents ? 'Excluir turma' : 'Excluir Agora') }}
           </button>
         </div>
       </div>
