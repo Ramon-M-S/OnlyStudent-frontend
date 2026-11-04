@@ -13,16 +13,16 @@ function logout() { menuOpen.value = false; emit('logout') }
       <button class="brand" @click="go(session ? 'dashboard' : 'home')" aria-label="Study Hub, início"><span class="brand-mark">S.</span><span>Study Hub</span></button>
       <nav :class="{ open: menuOpen }" aria-label="Navegação principal">
         <template v-if="session">
-          <button :class="{ active: view === 'dashboard' }" @click="go('dashboard')">Minhas turmas</button>
-          <button v-if="session.role === 'student'" :class="{ active: view === 'catalog' }" @click="go('catalog')">Explorar turmas</button>
-          <button v-if="session.role === 'educator'" class="nav-primary" @click="go('create')">Criar turma</button>
-          <button v-if="String(session.role).toUpperCase() === 'ADMIN'" :class="{ active: view === 'admin' }" @click="go('admin')">Gerenciar Admins</button>
-          <button class="nav-user" :class="{ active: view === 'profile' }" @click="go('profile')">{{ session.name.split(' ')[0] }}</button>
-          <button @click="logout">Sair</button>
+          <button class="nav-link" :class="{ active: view === 'dashboard' }" @click="go('dashboard')">Minhas turmas</button>
+          <button v-if="session.role === 'student'" class="nav-link" :class="{ active: view === 'catalog' }" @click="go('catalog')">Explorar turmas</button>
+          <button v-if="session.role === 'educator'" class="nav-link nav-create-btn" @click="go('create')">Criar turma</button>
+          <button v-if="String(session.role).toUpperCase() === 'ADMIN'" class="nav-link" :class="{ active: view === 'admin' }" @click="go('admin')">Gerenciar Admins</button>
+          <button class="nav-link nav-user" :class="{ active: view === 'profile' }" @click="go('profile')">{{ session.name.split(' ')[0] }}</button>
+          <button class="nav-link" @click="logout">Sair</button>
         </template>
         <template v-else>
-          <button @click="go('login')">Entrar</button>
-          <button class="nav-primary" @click="go('register')">Criar conta</button>
+          <button class="nav-link" @click="go('login')">Entrar</button>
+          <button class="nav-link nav-primary" @click="go('register')">Criar conta</button>
         </template>
       </nav>
       <div class="header-controls">
